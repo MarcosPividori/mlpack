@@ -73,9 +73,6 @@ PARAM_FLAG("naive", "If true, O(n^2) naive mode is used for computation.", "N");
 PARAM_FLAG("single_mode", "If true, single-tree search is used (as opposed to "
     "dual-tree search).", "s");
 
-// Convenience typedef.
-typedef NSModel<FurthestNeighborSort> KFNModel;
-
 int main(int argc, char *argv[])
 {
   // Give CLI the command line parameters the user passed in.
@@ -139,7 +136,7 @@ int main(int argc, char *argv[])
         << endl;
 
   // We either have to load the reference data, or we have to load the model.
-  NSModel<FurthestNeighborSort> kfn;
+  KFNModel *kfn;
   const bool naive = CLI::HasParam("naive");
   const bool singleMode = CLI::HasParam("single_mode");
   if (CLI::HasParam("reference_file"))
@@ -166,16 +163,14 @@ int main(int argc, char *argv[])
       Log::Fatal << "Unknown tree type '" << treeType << "'; valid choices are "
           << "'kd', 'cover', 'r', 'r-star', 'x' and 'ball'." << endl;
 
-    kfn.TreeType() = tree;
-    kfn.RandomBasis() = randomBasis;
-
     arma::mat referenceSet;
     data::Load(referenceFile, referenceSet, true);
 
     Log::Info << "Loaded reference data from '" << referenceFile << "' ("
         << referenceSet.n_rows << "x" << referenceSet.n_cols << ")." << endl;
 
-    kfn.BuildModel(std::move(referenceSet), size_t(lsInt), naive, singleMode);
+    kfn = new KFNModel(tree,randomBasis);
+    kfn->BuildModel(std::move(referenceSet), size_t(lsInt), naive, singleMode);
   }
   else
   {
@@ -184,13 +179,20 @@ int main(int argc, char *argv[])
     data::Load(inputModelFile, "kfn_model", kfn, true); // Fatal on failure.
 
     Log::Info << "Loaded kFN model from '" << inputModelFile << "' (trained on "
-        << kfn.Dataset().n_rows << "x" << kfn.Dataset().n_cols << " dataset)."
+        << kfn->Dataset().n_rows << "x" << kfn->Dataset().n_cols << " dataset)."
         << endl;
 
     // Adjust singleMode and naive if necessary.
-    kfn.SingleMode() = CLI::HasParam("single_mode");
-    kfn.Naive() = CLI::HasParam("naive");
-    kfn.LeafSize() = size_t(lsInt);
+    kfn->SingleMode() = singleMode;
+    kfn->Naive() = naive;
+
+    // If leaf_size was specified, we should rebuild the model.
+    if(CLI::HasParam("leaf_size"))
+    {
+        arma::mat referenceSet(kfn->Dataset());
+        kfn->BuildModel(std::move(referenceSet), size_t(lsInt), naive,
+            singleMode);
+    }
   }
 
   // Perform search, if desired.
@@ -210,11 +212,11 @@ int main(int argc, char *argv[])
     // Sanity check on k value: must be greater than 0, must be less than the
     // number of reference points.  Since it is unsigned, we only test the upper
     // bound.
-    if (k > kfn.Dataset().n_cols)
+    if (k > kfn->Dataset().n_cols)
     {
       Log::Fatal << "Invalid k: " << k << "; must be greater than 0 and less "
           << "than or equal to the number of reference points ("
-          << kfn.Dataset().n_cols << ")." << endl;
+          << kfn->Dataset().n_cols << ")." << endl;
     }
 
     // Naive mode overrides single mode.
@@ -226,9 +228,9 @@ int main(int argc, char *argv[])
     arma::mat distances;
 
     if (CLI::HasParam("query_file"))
-      kfn.Search(std::move(queryData), k, neighbors, distances);
+      kfn->Search(std::move(queryData), k, neighbors, distances);
     else
-      kfn.Search(k, neighbors, distances);
+      kfn->Search(k, neighbors, distances);
     Log::Info << "Search complete." << endl;
 
     // Save output, if desired.
@@ -243,4 +245,7 @@ int main(int argc, char *argv[])
     const string outputModelFile = CLI::GetParam<string>("output_model_File");
     data::Save(outputModelFile, "kfn_model", kfn);
   }
+
+  if(kfn)
+    delete kfn;
 }

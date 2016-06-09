@@ -20,6 +20,7 @@
 #include "neighbor_search_stat.hpp"
 #include "sort_policies/nearest_neighbor_sort.hpp"
 #include "neighbor_search_rules.hpp"
+#include "neighbor_search_gen.hpp"
 
 namespace mlpack {
 namespace neighbor /** Neighbor-search routines.  These include
@@ -27,8 +28,14 @@ namespace neighbor /** Neighbor-search routines.  These include
                     * searches. */ {
 
 // Forward declaration.
-template<typename SortPolicy>
-class NSModel;
+template<typename SortPolicy,
+         typename MetricType,
+         typename MatType,
+         template<typename TreeMetricType,
+                  typename TreeStatType,
+                  typename TreeMatType> class TreeType,
+         template<typename RuleType> class TraversalType>
+class NeighborSearchLeaf;
 
 /**
  * The NeighborSearch class is a template class for performing distance-based
@@ -61,7 +68,7 @@ template<typename SortPolicy = NearestNeighborSort,
              TreeType<MetricType,
                       NeighborSearchStat<SortPolicy>,
                       MatType>::template DualTreeTraverser>
-class NeighborSearch
+class NeighborSearch : public NeighborSearchGen<MatType>
 {
  public:
   //! Convenience typedef.
@@ -307,8 +314,9 @@ class NeighborSearch
   //! Search() without a query set.
   bool treeNeedsReset;
 
-  //! The NSModel class should have access to internal members.
-  friend class NSModel<SortPolicy>;
+  //! The NeighborSearchLeaf class should have access to internal members.
+  friend NeighborSearchLeaf<SortPolicy, MetricType, MatType, TreeType,
+      TraversalType>;
 }; // class NeighborSearch
 
 } // namespace neighbor

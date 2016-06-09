@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
   }
 
   // We either have to load the reference data, or we have to load the model.
-  NSModel<NearestNeighborSort> knn;
+  KNNModel *knn;
   const bool naive = CLI::HasParam("naive");
   const bool singleMode = CLI::HasParam("single_mode");
   if (CLI::HasParam("reference_file"))
@@ -170,9 +170,6 @@ int main(int argc, char *argv[])
       Log::Fatal << "Unknown tree type '" << treeType << "'; valid choices are "
           << "'kd', 'cover', 'r', 'r-star', 'x' and 'ball'." << endl;
 
-    knn.TreeType() = tree;
-    knn.RandomBasis() = randomBasis;
-
     arma::mat referenceSet;
     data::Load(referenceFile, referenceSet, true);
 
@@ -180,7 +177,8 @@ int main(int argc, char *argv[])
         << referenceSet.n_rows << " x " << referenceSet.n_cols << ")."
         << endl;
 
-    knn.BuildModel(std::move(referenceSet), size_t(lsInt), naive, singleMode);
+    knn = new KNNModel(tree,randomBasis);
+    knn->BuildModel(std::move(referenceSet), size_t(lsInt), naive, singleMode);
   }
   else
   {
@@ -189,13 +187,20 @@ int main(int argc, char *argv[])
     data::Load(inputModelFile, "knn_model", knn, true); // Fatal on failure.
 
     Log::Info << "Loaded kNN model from '" << inputModelFile << "' (trained on "
-        << knn.Dataset().n_rows << "x" << knn.Dataset().n_cols << " dataset)."
+        << knn->Dataset().n_rows << "x" << knn->Dataset().n_cols << " dataset)."
         << endl;
 
     // Adjust singleMode and naive if necessary.
-    knn.SingleMode() = CLI::HasParam("single_mode");
-    knn.Naive() = CLI::HasParam("naive");
-    knn.LeafSize() = size_t(lsInt);
+    knn->SingleMode() = singleMode;
+    knn->Naive() = naive;
+
+    // If leaf_size was specified, we should rebuild the model.
+    if(CLI::HasParam("leaf_size"))
+    {
+        arma::mat referenceSet(knn->Dataset());
+        knn->BuildModel(std::move(referenceSet), size_t(lsInt), naive,
+            singleMode);
+    }
   }
 
   // Perform search, if desired.
@@ -215,11 +220,11 @@ int main(int argc, char *argv[])
     // Sanity check on k value: must be greater than 0, must be less than the
     // number of reference points.  Since it is unsigned, we only test the upper
     // bound.
-    if (k > knn.Dataset().n_cols)
+    if (k > knn->Dataset().n_cols)
     {
       Log::Fatal << "Invalid k: " << k << "; must be greater than 0 and less ";
       Log::Fatal << "than or equal to the number of reference points (";
-      Log::Fatal << knn.Dataset().n_cols << ")." << endl;
+      Log::Fatal << knn->Dataset().n_cols << ")." << endl;
     }
 
     // Naive mode overrides single mode.
@@ -233,9 +238,9 @@ int main(int argc, char *argv[])
     arma::mat distances;
 
     if (CLI::HasParam("query_file"))
-      knn.Search(std::move(queryData), k, neighbors, distances);
+      knn->Search(std::move(queryData), k, neighbors, distances);
     else
-      knn.Search(k, neighbors, distances);
+      knn->Search(k, neighbors, distances);
     Log::Info << "Search complete." << endl;
 
     // Save output, if desired.
@@ -250,4 +255,7 @@ int main(int argc, char *argv[])
     const string outputModelFile = CLI::GetParam<string>("output_model_file");
     data::Save(outputModelFile, "knn_model", knn);
   }
+
+  if (knn)
+    delete knn;
 }

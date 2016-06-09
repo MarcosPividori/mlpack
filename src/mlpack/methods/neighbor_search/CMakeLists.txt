@@ -3,6 +3,9 @@
 set(SOURCES
   neighbor_search.hpp
   neighbor_search_impl.hpp
+  neighbor_search_gen.hpp
+  neighbor_search_leaf.hpp
+  neighbor_search_leaf_impl.hpp
   neighbor_search_rules.hpp
   neighbor_search_rules_impl.hpp
   neighbor_search_stat.hpp

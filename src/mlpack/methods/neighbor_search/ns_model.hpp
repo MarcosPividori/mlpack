@@ -14,7 +14,9 @@
 #include <mlpack/core/tree/cover_tree.hpp>
 #include <mlpack/core/tree/rectangle_tree.hpp>
 
+#include "neighbor_search_gen.hpp"
 #include "neighbor_search.hpp"
+#include "neighbor_search_leaf.hpp"
 
 namespace mlpack {
 namespace neighbor {
@@ -26,16 +28,16 @@ struct NSModelName
 };
 
 template<>
-struct NSModelName<NearestNeighborSort>
+const std::string NSModelName<NearestNeighborSort>::Name()
 {
-  static const std::string Name() { return "nearest_neighbor_search_model"; }
-};
+  return "nearest_neighbor_search_model";
+}
 
 template<>
-struct NSModelName<FurthestNeighborSort>
+const std::string NSModelName<FurthestNeighborSort>::Name()
 {
-  static const std::string Name() { return "furthest_neighbor_search_model"; }
-};
+  return "furthest_neighbor_search_model";
+}
 
 template<typename SortPolicy>
 class NSModel
@@ -53,9 +55,7 @@ class NSModel
 
  private:
   TreeTypes treeType;
-  size_t leafSize;
 
-  // For random projections.
   bool randomBasis;
   arma::mat q;
 
@@ -70,66 +70,55 @@ class NSModel
                                     NeighborSearchStat<SortPolicy>,
                                     arma::mat>::template DualTreeTraverser>;
 
-  // Only one of these pointers will be non-NULL.
-  NSType<tree::KDTree>* kdTreeNS;
-  NSType<tree::StandardCoverTree>* coverTreeNS;
-  NSType<tree::RTree>* rTreeNS;
-  NSType<tree::RStarTree>* rStarTreeNS;
-  NSType<tree::BallTree>* ballTreeNS;
-  NSType<tree::XTree>* xTreeNS;
+  template<template<typename TreeMetricType,
+                    typename TreeStatType,
+                    typename TreeMatType> class TreeType>
+  using NSLeaf = NeighborSearchLeaf<SortPolicy,
+                                    metric::EuclideanDistance,
+                                    arma::mat,
+                                    TreeType,
+                                    TreeType<metric::EuclideanDistance,
+                                        NeighborSearchStat<SortPolicy>,
+                                        arma::mat>::template DualTreeTraverser>;
+
+  NeighborSearchGen<arma::mat>* nSearch;
 
  public:
-  /**
-   * Initialize the NSModel with the given type and whether or not a random
-   * basis should be used.
-   */
-  NSModel(TreeTypes treeType = TreeTypes::KD_TREE, bool randomBasis = false);
+  NSModel(TreeTypes treeTyp = KD_TREE, bool randomBasis = false);
 
-  //! Clean memory, if necessary.
   ~NSModel();
 
-  //! Serialize the neighbor search model.
-  template<typename Archive>
-  void Serialize(Archive& ar, const unsigned int /* version */);
-
-  //! Expose the dataset.
-  const arma::mat& Dataset() const;
-
-  //! Expose singleMode.
-  bool SingleMode() const;
-  bool& SingleMode();
-
-  bool Naive() const;
-  bool& Naive();
-
-  size_t LeafSize() const { return leafSize; }
-  size_t& LeafSize() { return leafSize; }
-
-  TreeTypes TreeType() const { return treeType; }
-  TreeTypes& TreeType() { return treeType; }
-
-  bool RandomBasis() const { return randomBasis; }
-  bool& RandomBasis() { return randomBasis; }
-
-  //! Build the reference tree.
   void BuildModel(arma::mat&& referenceSet,
-                  const size_t leafSize,
-                  const bool naive,
-                  const bool singleMode);
+                  const size_t leafSize = 20,
+                  const bool naive = false,
+                  const bool singleMode = false);
 
-  //! Perform neighbor search.  The query set will be reordered.
   void Search(arma::mat&& querySet,
               const size_t k,
               arma::Mat<size_t>& neighbors,
               arma::mat& distances);
 
-  //! Perform neighbor search.
   void Search(const size_t k,
               arma::Mat<size_t>& neighbors,
               arma::mat& distances);
 
+  const arma::mat& Dataset() const;
+
+  bool Naive() const;
+  bool& Naive();
+
+  bool SingleMode() const;
+  bool& SingleMode();
+
   std::string TreeName() const;
+
+  //! Serialize the neighbor search model.
+  template<typename Archive>
+  void Serialize(Archive& ar, const unsigned int /* version */);
 };
+
+using KNNModel = NSModel<NearestNeighborSort>;
+using KFNModel = NSModel<FurthestNeighborSort>;
 
 } // namespace neighbor
 } // namespace mlpack
