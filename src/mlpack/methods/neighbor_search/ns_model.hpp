@@ -174,7 +174,7 @@ class NaiveVisitor : public boost::static_visitor<bool&>
 {
  public:
   template<typename NSType>
-  bool& operator()(NSType *ns) const;
+  bool& operator()(NSType* ns) const;
 };
 
 /**
@@ -184,7 +184,7 @@ class ReferenceSetVisitor : public boost::static_visitor<const arma::mat&>
 {
  public:
   template<typename NSType>
-  const arma::mat& operator()(NSType *ns) const;
+  const arma::mat& operator()(NSType* ns) const;
 };
 
 /**
@@ -194,7 +194,7 @@ class DeleteVisitor : public boost::static_visitor<void>
 {
  public:
   template<typename NSType>
-  void operator()(NSType *ns) const;
+  void operator()(NSType* ns) const;
 };
 
 /**
@@ -209,7 +209,7 @@ class SerializeVisitor : public boost::static_visitor<void>
 
  public:
   template<typename NSType>
-  void operator()(NSType *ns) const;
+  void operator()(NSType*& ns) const;
 
   SerializeVisitor(Archive& ar, const std::string& name);
 };

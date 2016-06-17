@@ -27,7 +27,7 @@ MonoSearchVisitor::MonoSearchVisitor(const size_t k,
 
 //! Monochromatic neighbor search on the given NSType instance.
 template<typename NSType>
-void MonoSearchVisitor::operator()(NSType *ns) const
+void MonoSearchVisitor::operator()(NSType* ns) const
 {
   if (ns)
     return ns->Search(k, neighbors, distances);
@@ -211,7 +211,7 @@ SerializeVisitor<Archive>::SerializeVisitor(Archive& ar,
 //! Serialize the given NSType instance.
 template<typename Archive>
 template<typename NSType>
-void SerializeVisitor<Archive>::operator()(NSType* ns) const
+void SerializeVisitor<Archive>::operator()(NSType*& ns) const
 {
   ar & data::CreateNVP(ns, name);
 }
@@ -245,9 +245,34 @@ void NSModel<SortPolicy>::Serialize(Archive& ar,
   ar & data::CreateNVP(randomBasis, "randomBasis");
   ar & data::CreateNVP(q, "q");
 
-  // This should never happen, but just in case, be clean with memory.
   if (Archive::is_loading::value)
+  {
+    // This should never happen, but just in case, be clean with memory.
     boost::apply_visitor(DeleteVisitor(), nSearch);
+    // Set proper NSType pointer, so the SerializeVisitor can identify which
+    // object to create.
+    switch (treeType)
+    {
+      case KD_TREE:
+        nSearch = (NSType<SortPolicy, tree::KDTree>*) NULL;
+        break;
+      case COVER_TREE:
+        nSearch = (NSType<SortPolicy, tree::StandardCoverTree>*) NULL;
+        break;
+      case R_TREE:
+        nSearch = (NSType<SortPolicy, tree::RTree>*) NULL;
+        break;
+      case R_STAR_TREE:
+        nSearch = (NSType<SortPolicy, tree::RStarTree>*) NULL;
+        break;
+      case BALL_TREE:
+        nSearch = (NSType<SortPolicy, tree::BallTree>*) NULL;
+        break;
+      case X_TREE:
+        nSearch = (NSType<SortPolicy, tree::XTree>*) NULL;
+        break;
+    }
+  }
 
   // We'll only need to serialize one of the kNN objects, based on the type.
   const std::string& name = NSModelName<SortPolicy>::Name();
