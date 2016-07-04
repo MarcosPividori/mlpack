@@ -61,6 +61,11 @@ set(SOURCES
   rectangle_tree/hilbert_r_tree_auxiliary_information_impl.hpp
   rectangle_tree/discrete_hilbert_value.hpp
   rectangle_tree/discrete_hilbert_value_impl.hpp
+  spill_tree.hpp
+  spill_tree/spill_tree.hpp
+  spill_tree/spill_tree_impl.hpp
+  spill_tree/traits.hpp
+  spill_tree/typedef.hpp
   statistic.hpp
   traversal_info.hpp
   tree_traits.hpp
