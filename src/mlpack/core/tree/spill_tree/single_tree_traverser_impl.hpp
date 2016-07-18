@@ -61,13 +61,6 @@ SingleTreeTraverser<RuleType>::Traverse(
       // Recurse to the left.
       Traverse(queryIndex, *referenceNode.Left());
 
-      // If overlapping node, let's do defeatist search and ignore backtracking.
-      if (referenceNode.Overlap())
-      {
-        ++numPrunes;
-        return;
-      }
-
       // Is it still valid to recurse to the right?
       rightScore = rule.Rescore(queryIndex, *referenceNode.Right(), rightScore);
 
@@ -80,13 +73,6 @@ SingleTreeTraverser<RuleType>::Traverse(
     {
       // Recurse to the right.
       Traverse(queryIndex, *referenceNode.Right());
-
-      // If overlapping node, let's do defeatist search and ignore backtracking.
-      if (referenceNode.Overlap())
-      {
-        ++numPrunes;
-        return;
-      }
 
       // Is it still valid to recurse to the left?
       leftScore = rule.Rescore(queryIndex, *referenceNode.Left(), leftScore);
@@ -106,14 +92,6 @@ SingleTreeTraverser<RuleType>::Traverse(
       {
         // Choose the left first.
         Traverse(queryIndex, *referenceNode.Left());
-
-        // If overlapping node, let's do defeatist search and ignore
-        // backtracking.
-        if (referenceNode.Overlap())
-        {
-          ++numPrunes;
-          return;
-        }
 
         // Is it still valid to recurse to the right?
         rightScore = rule.Rescore(queryIndex, *referenceNode.Right(),
