@@ -475,6 +475,12 @@ void NeighborSearchRules<SortPolicy, MetricType, TreeType>::InsertNeighbor(
     const size_t neighbor,
     const double distance)
 {
+  if (tree::TreeTraits<TreeType>::HasOverlappingChildren)
+    for (size_t i = pos; i < neighbors.n_rows &&
+        distances(i, queryIndex) == distance; ++i)
+      if (neighbors(i, queryIndex) == neighbor)
+        return;
+
   // We only memmove() if there is actually a need to shift something.
   if (pos < (distances.n_rows - 1))
   {
